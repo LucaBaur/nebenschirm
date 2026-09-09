@@ -1,0 +1,13 @@
+[Unit]
+Description=Nebenschirm — Datendienst für die Tafel am iMac
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/nebenschirm
+ExecStart=/usr/bin/python3 %h/nebenschirm/server.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,969 @@
+<title>Nebenschirm</title>
+
+<style>
+/* ============================================================
+   Nebenschirm — Kiosk-Dashboard für den iMac (Linux Mint)
+   Ziel: 2560 x 1440, Firefox --kiosk, ein Blick, kein Scrollen.
+   Display-Schrift Ubuntu — auf dem Zielrechner nativ vorhanden.
+   ============================================================ */
+
+:root {
+  /* --- Hell: kühler Schieferton als Grund, Karten strahlend weiß --- */
+  --ground:    #CFDCEC;
+  --wash-a:    rgba(46, 123, 214, .30);   /* Blauwäsche oben links */
+  --wash-b:    rgba(239, 138, 76, .13);   /* warme Wäsche unten rechts */
+  --wash-c:    rgba(255, 255, 255, .55);  /* Aufhellung Mitte */
+
+  --card:      #FFFFFF;
+  --card-2:    #F1F6FC;
+  --rule:      #E7EEF7;
+  --ink:       #14263C;
+  --ink-2:     #3C5570;
+  --muted:     #748FAB;
+  --faint:     #A1B5CB;
+
+  --accent:    #2E7BD6;
+  --accent-w:  #E4EFFC;
+  --warm:      #E37F3F;
+  --warm-w:    #FCEDE2;
+
+  --ok:        #199A70;
+  --ok-w:      #DEF4EC;
+  --warn:      #CF8215;
+  --warn-w:    #FBEFDB;
+  --crit:      #D44E5D;
+  --crit-w:    #FBE7EA;
+
+  --sh-1: 0 1px 2px rgba(14,38,60,.06);
+  --sh-2: 0 1px 2px rgba(14,38,60,.06), 0 6px 14px rgba(14,38,60,.08),
+          0 20px 44px rgba(14,38,60,.09);
+  --sh-in: inset 0 1px 0 rgba(255,255,255,.9);
+
+  --r-lg: 17px;
+  --r-md: 11px;
+  --r-sm: 7px;
+
+  --f-disp: Ubuntu, "Avenir Next", "Segoe UI Variable Display", "Segoe UI",
+            system-ui, -apple-system, sans-serif;
+  --f-body: system-ui, -apple-system, "Segoe UI", Ubuntu, Cantarell, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", Consolas,
+            "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:   #0C131E;
+    --wash-a:   rgba(88, 162, 238, .20);
+    --wash-b:   rgba(245, 155, 96, .09);
+    --wash-c:   rgba(255, 255, 255, .03);
+
+    --card:     #1A2534;
+    --card-2:   #22303F;
+    --rule:     #2B3B4E;
+    --ink:      #E8F0F9;
+    --ink-2:    #B7C9DE;
+    --muted:    #8299B4;
+    --faint:    #5C7390;
+
+    --accent:   #58A2EE;
+    --accent-w: #1D3350;
+    --warm:     #F09A62;
+    --warm-w:   #36271C;
+
+    --ok:       #32BE91;
+    --ok-w:     #15322A;
+    --warn:     #E5A33A;
+    --warn-w:   #342915;
+    --crit:     #EA6B78;
+    --crit-w:   #371E23;
+
+    --sh-1: 0 1px 2px rgba(0,0,0,.35);
+    --sh-2: 0 2px 6px rgba(0,0,0,.34), 0 16px 40px rgba(0,0,0,.38);
+    --sh-in: inset 0 1px 0 rgba(255,255,255,.05);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:   #0C131E;
+  --wash-a:   rgba(88, 162, 238, .20);
+  --wash-b:   rgba(245, 155, 96, .09);
+  --wash-c:   rgba(255, 255, 255, .03);
+
+  --card:     #1A2534;
+  --card-2:   #22303F;
+  --rule:     #2B3B4E;
+  --ink:      #E8F0F9;
+  --ink-2:    #B7C9DE;
+  --muted:    #8299B4;
+  --faint:    #5C7390;
+
+  --accent:   #58A2EE;
+  --accent-w: #1D3350;
+  --warm:     #F09A62;
+  --warm-w:   #36271C;
+
+  --ok:       #32BE91;
+  --ok-w:     #15322A;
+  --warn:     #E5A33A;
+  --warn-w:   #342915;
+  --crit:     #EA6B78;
+  --crit-w:   #371E23;
+
+  --sh-1: 0 1px 2px rgba(0,0,0,.35);
+  --sh-2: 0 2px 6px rgba(0,0,0,.34), 0 16px 40px rgba(0,0,0,.38);
+  --sh-in: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+
+  background-color: var(--ground);
+  background-image:
+    radial-gradient(1100px 620px at 8% -6%,  var(--wash-a), transparent 68%),
+    radial-gradient(900px 560px at 100% 108%, var(--wash-b), transparent 66%),
+    radial-gradient(1400px 900px at 52% 46%, var(--wash-c), transparent 72%);
+  background-attachment: fixed;
+}
+
+/* One-Pager: auf dem Zielschirm nie scrollen. Bei kleinen Fenstern
+   (Vorschau am Laptop) darf die Seite lieber rollen als abschneiden. */
+.board {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 15px 17px 14px;
+}
+@media (max-height: 940px) {
+  .board { height: auto; min-height: 100vh; overflow: visible; }
+}
+
+/* ─────────── Karte ─────────── */
+
+.card {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2), var(--sh-in);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chead { display: flex; align-items: center; gap: 9px; padding: 13px 18px 10px; flex: none; }
+.ctitle { font-family: var(--f-disp); font-size: 15.5px; font-weight: 700; color: var(--ink); }
+.cnote { font-size: 12px; color: var(--faint); margin-left: auto; flex: none; font-variant-numeric: tabular-nums; }
+
+.cbody { padding: 0 18px 15px; overflow-y: auto; min-height: 0; flex: 1; }
+.cbody.flush { padding: 0 0 7px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 600; padding: 2.5px 9px; border-radius: 999px;
+  background: var(--card-2); color: var(--muted); white-space: nowrap;
+}
+.pill.blue { background: var(--accent-w); color: var(--accent); }
+.pill.ok   { background: var(--ok-w);   color: var(--ok); }
+.pill.warn { background: var(--warn-w); color: var(--warn); }
+.pill.warm { background: var(--warm-w); color: var(--warm); }
+
+/* ─────────── Kopf: Uhr in der Mitte ─────────── */
+
+.top { display: grid; grid-template-columns: 1fr auto 1fr; gap: 13px; flex: none; }
+
+.tile {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2), var(--sh-in);
+  padding: 13px 20px;
+  display: flex; align-items: center;
+}
+
+/* Uhr */
+.clocktile { flex-direction: column; justify-content: center; padding: 11px 46px 13px; text-align: center; }
+.clock {
+  font-family: var(--f-disp);
+  font-size: 74px; font-weight: 700; line-height: .92; letter-spacing: -.022em;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: baseline; justify-content: center; gap: 7px;
+}
+.clock .sec {
+  font-size: 21px; font-weight: 500; color: var(--accent);
+  letter-spacing: 0; align-self: flex-end; padding-bottom: 9px;
+}
+.cdate {
+  font-family: var(--f-disp); font-size: 16px; font-weight: 700;
+  color: var(--ink-2); margin-top: 5px;
+}
+.ckw { font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+
+/* Wetter links */
+.wxtile { gap: 22px; flex-wrap: wrap; }
+.wx { display: flex; align-items: center; gap: 13px; }
+.wx-icon {
+  width: 46px; height: 46px; flex: none; color: var(--accent);
+  background: var(--accent-w); border-radius: var(--r-md); padding: 6px;
+}
+.wx-temp { font-family: var(--f-disp); font-size: 33px; font-weight: 700; line-height: 1.02; font-variant-numeric: tabular-nums; }
+.wx-desc { font-size: 11.5px; color: var(--muted); }
+.wx-grid {
+  display: grid; grid-template-columns: auto auto; gap: 2px 13px;
+  font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.wx-grid b { color: var(--ink-2); font-weight: 600; }
+
+/* Rechts: Kopfhörer + Jobs */
+.righttile { gap: 24px; justify-content: flex-end; flex-wrap: wrap; }
+.bt { display: flex; align-items: center; gap: 11px; }
+.bt-icon { width: 18px; height: 18px; flex: none; color: var(--warn); }
+.bt-txt { display: flex; flex-direction: column; gap: 3px; }
+.bt-name { font-size: 12px; font-weight: 600; }
+.bt-bar { width: 80px; height: 6px; border-radius: 999px; background: var(--card-2); overflow: hidden; }
+.bt-bar i { display: block; height: 100%; border-radius: 999px; background: var(--warn); }
+.bt-pct { font-family: var(--f-disp); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.jobs { display: grid; grid-template-columns: repeat(2, auto); gap: 3px 20px; }
+.job { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 17%, transparent);
+}
+.dot.warn { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 17%, transparent); }
+.job .t { color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ─────────── Raster: 4 Spalten auf 2560 px ─────────── */
+
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  min-height: 0;
+}
+.col { display: flex; flex-direction: column; gap: 13px; min-height: 0; }
+
+/* Ohne Zutun nehmen Karten nur ihre Inhaltshoehe ein und lassen den Rest der
+   Spalte leer. Karten mit Liste dehnen sich deshalb in den freien Platz,
+   kurze Karten bleiben bei ihrer natuerlichen Hoehe. */
+.col > .card { flex: 0 0 auto; }
+.col > .card.stretch { flex: 1 1 0; }
+
+@media (max-width: 1700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px)  { .grid { grid-template-columns: minmax(0, 1fr); } .top { grid-template-columns: 1fr; } .righttile { justify-content: flex-start; } }
+
+/* ─────────── Training ─────────── */
+
+.tr-hero {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 15%, var(--card)), var(--card) 76%);
+  border-radius: var(--r-md); padding: 16px 18px 17px; margin-bottom: 15px;
+}
+.tr-when { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tr-day { font-family: var(--f-disp); font-size: 46px; font-weight: 700; line-height: .98; letter-spacing: -.015em; }
+.tr-time { font-family: var(--f-disp); font-size: 30px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tr-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 7px; font-size: 13.5px; color: var(--ink-2); }
+
+/* Der Trainingsblock bekommt die volle Spaltenhoehe: Hero oben, Balken
+   darunter gleichmaessig verteilt statt mit einem Loch am Fuss. */
+.tr-card .cbody { display: flex; flex-direction: column; }
+.tr-card .zus { flex: 1; justify-content: space-evenly; }
+
+.zus { display: flex; flex-direction: column; gap: 8px; }
+.zrow { display: grid; grid-template-columns: 76px 1fr 30px; align-items: center; gap: 13px; }
+.zlab { font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.ztrack { height: 13px; border-radius: 999px; background: var(--card-2); overflow: hidden; }
+.zfill { display: block; height: 100%; border-radius: 999px; }
+.zfill.yes { background: var(--ok); }
+.zfill.maybe { background: var(--warn); }
+.zfill.no { background: var(--crit); }
+.zfill.open { background: var(--faint); }
+.znum { font-family: var(--f-disp); font-size: 18px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ─────────── Karten-Fußnote ─────────── */
+
+.foot {
+  font-size: 12.5px; color: var(--muted); line-height: 1.55;
+  padding: 10px 16px 12px; background: var(--card-2);
+  border-radius: 0 0 var(--r-lg) var(--r-lg); flex: none; margin: 0;
+}
+.foot b { color: var(--ink-2); font-weight: 600; }
+.foot code {
+  font-family: var(--f-mono); font-size: 10.5px;
+  background: var(--card); padding: 1px 4px; border-radius: var(--r-sm); box-shadow: var(--sh-1);
+}
+
+/* ─────────── Balu ─────────── */
+
+.balu-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+.ver { font-family: var(--f-disp); font-size: 20px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.balu-task { font-size: 13.5px; line-height: 1.5; }
+.balu-files { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-top: 7px; display: flex; flex-direction: column; gap: 2px; }
+.phases { list-style: none; margin: 13px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.phases.fill { flex: 1; justify-content: space-evenly; }
+.card.stretch .cbody { display: flex; flex-direction: column; }
+.ph { display: flex; align-items: flex-start; gap: 11px; padding: 6px 9px; border-radius: var(--r-md); }
+.ph.now { background: var(--accent-w); }
+.phnum {
+  width: 21px; height: 21px; flex: none; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--f-disp); font-size: 11.5px; font-weight: 700;
+  background: var(--card-2); color: var(--faint);
+}
+.ph.now .phnum { background: var(--accent); color: #FFFFFF; }
+.phtxt { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.phtxt b { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.ph.now .phtxt b { color: var(--accent); }
+
+/* ─────────── Streams ─────────── */
+
+.lrow { display: flex; align-items: center; gap: 11px; padding: 7px 16px; }
+.lrow + .lrow { border-top: 1px solid var(--rule); }
+.av {
+  width: 27px; height: 27px; border-radius: 50%; flex: none;
+  background: var(--accent-w); color: var(--accent);
+  display: grid; place-items: center;
+  font-family: var(--f-disp); font-size: 11.5px; font-weight: 700; position: relative;
+}
+.av.live::after {
+  content: ""; position: absolute; right: -1px; bottom: -1px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--crit); box-shadow: 0 0 0 2px var(--card);
+}
+.av.off { background: var(--card-2); color: var(--faint); }
+.ltxt { display: flex; flex-direction: column; min-width: 0; }
+.lname { font-size: 13.5px; font-weight: 600; }
+.lgame { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lview { margin-left: auto; flex: none; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ─────────── Agenda ─────────── */
+
+.agday { display: grid; grid-template-columns: 46px 1fr; gap: 12px; padding: 9px 18px; align-items: start; }
+.agday + .agday { border-top: 1px solid var(--rule); }
+/* Tage ohne Eintrag brauchen keine volle Zeilenhoehe. */
+.agday.leer { padding-top: 3px; padding-bottom: 3px; }
+.agday.today { background: var(--accent-w); }
+.agdate { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.3; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.agdate b { display: block; font-family: var(--f-disp); font-size: 15.5px; font-weight: 700; color: var(--ink-2); }
+.agday.today .agdate b { color: var(--accent); }
+.agitems { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.agitem { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.agtag { width: 8px; height: 8px; border-radius: 3px; flex: none; }
+.agtag.train { background: var(--accent); }
+.agtag.waste { background: var(--ok); }
+.agtag.job   { background: var(--faint); }
+.agt { font-size: 12px; color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
+.agempty { font-size: 13px; color: var(--faint); }
+
+/* ─────────── Listen ─────────── */
+
+/* Gruppenueberschrift statt Reiter: bei dieser Schirmhoehe passen alle
+   drei Listen untereinander, Umschalten ist unnoetig. */
+.lgroup {
+  margin: 0; padding: 11px 18px 5px;
+  font-family: var(--f-disp); font-size: 12px; font-weight: 700;
+  color: var(--faint); letter-spacing: .05em; text-transform: uppercase;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.lgroup + ul.list { margin-bottom: 3px; }
+.lgroup .n {
+  font-size: 11px; font-weight: 700; letter-spacing: 0;
+  color: var(--accent); background: var(--accent-w);
+  padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.cbody > .lgroup:first-child { padding-top: 2px; }
+.lgroup ~ ul.list li { padding-top: 9px; padding-bottom: 9px; }
+
+ul.list { list-style: none; margin: 0; padding: 0; }
+/* Kurze Eintraege stehen zweispaltig — spart Hoehe, ohne enger zu wirken. */
+ul.list.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4px; }
+ul.list.two li { padding-top: 13px; padding-bottom: 13px; }
+ul.list.eng li { padding-top: 5px; padding-bottom: 5px; }
+ul.list.two li:nth-child(2n) { border-left: 1px solid var(--rule); }
+ul.list li { display: flex; align-items: center; gap: 12px; padding: 7px 18px; font-size: 14px; }
+ul.list li:hover { background: var(--card-2); }
+
+.tick {
+  appearance: none; -webkit-appearance: none; margin: 0; flex: none; cursor: pointer;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--faint); background: transparent; position: relative;
+}
+.tick:checked { border-color: var(--ok); background: var(--ok); }
+.tick:checked::after {
+  content: ""; position: absolute; inset: 3px 3.5px 4px 3.5px;
+  border-left: 1.6px solid var(--card); border-bottom: 1.6px solid var(--card);
+  transform: rotate(-45deg);
+}
+.tick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tick:checked + .lt { color: var(--faint); text-decoration: line-through; }
+.lt { transition: color .13s; cursor: pointer; }
+.qty { margin-left: auto; flex: none; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ─────────── Haushalt ─────────── */
+
+.chores { display: flex; flex-wrap: wrap; gap: 8px; }
+.chore {
+  display: inline-flex; align-items: center;
+  font-size: 13px; font-weight: 600; padding: 6px 13px; border-radius: 999px;
+  background: var(--warn-w); color: var(--warn);
+}
+.chore.done { background: var(--ok-w); color: var(--ok); }
+
+/* ─────────── Eingang ─────────── */
+
+.mrow { padding: 9px 18px; display: grid; grid-template-columns: 1fr auto; gap: 1px 10px; }
+.mrow + .mrow { border-top: 1px solid var(--rule); }
+.mfrom { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.mnew { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+.mtime { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.msub { font-size: 12.5px; color: var(--muted); grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─────────── Einklappbare Leisten (Fußzeile) ─────────── */
+
+details.fold {
+  background: var(--card); border-radius: var(--r-lg);
+  box-shadow: var(--sh-2), var(--sh-in); overflow: hidden;
+  display: flex; flex-direction: column; min-height: 0; flex: none;
+}
+details.fold > summary {
+  list-style: none; cursor: pointer; padding: 10px 17px;
+  display: flex; align-items: center; gap: 11px; flex: none;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary:hover { background: var(--card-2); }
+details.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.arrow {
+  width: 0; height: 0; flex: none;
+  border-left: 5px solid var(--muted);
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  transition: transform .16s;
+}
+details.fold[open] .arrow { transform: rotate(90deg); }
+.sname { font-family: var(--f-disp); font-size: 15px; font-weight: 700; }
+.shint { margin-left: auto; flex: none; font-size: 11px; color: var(--faint); }
+
+/* Homeserver-Karte: dauerhaft offen, flach, fünf Blöcke nebeneinander */
+.card.srv { flex: none; }
+.sdetail {
+  padding: 2px 17px 15px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 13px 26px;
+  overflow-y: auto; min-height: 0;
+}
+.mini {
+  width: 46px; height: 6px; border-radius: 999px;
+  background: var(--card-2); overflow: hidden; flex: none; margin-left: auto;
+}
+.mini i { display: block; height: 100%; border-radius: 999px; background: var(--ok); }
+
+.foldbody { border-top: 1px solid var(--rule); overflow-y: auto; min-height: 0; }
+.foldbody .lrow:first-child { border-top: 0; }
+
+/* „live"-Pille mit pulsfreiem Punkt */
+.pill.crit-live { background: var(--crit-w); color: var(--crit); }
+.pill.crit-live::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--crit); flex: none;
+}
+.sblock h4 {
+  margin: 0 0 8px; font-family: var(--f-disp); font-size: 12.5px; font-weight: 700;
+  color: var(--faint); letter-spacing: .05em; text-transform: uppercase;
+}
+.kv { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.kv .k { color: var(--muted); }
+.kv .v { color: var(--ink-2); font-weight: 500; margin-left: auto; }
+.kv .mini + .v { margin-left: 0; min-width: 50px; text-align: right; }
+
+/* ─────────── Fußzeile ─────────── */
+
+.legend { display: flex; gap: 13px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--ink-2); padding: 0 5px; flex: none; }
+.legend code {
+  font-family: var(--f-mono); font-size: 10.5px;
+  background: var(--card); padding: 1px 4px; border-radius: var(--r-sm); box-shadow: var(--sh-1);
+}
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="board">
+
+  <!-- ══════════ KOPF ══════════ -->
+  <header class="top">
+
+    <div class="tile wxtile">
+      <div class="wx">
+        <svg class="wx-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <path d="M9 17.5a4.5 4.5 0 0 1 .6-8.96A6.5 6.5 0 0 1 22 9.7a4.4 4.4 0 0 1 .4 8.8z"/>
+          <path d="M11 21.5l-1.3 4M16 21.5l-1.3 4M21 21.5l-1.3 4"/>
+        </svg>
+        <div>
+          <div class="wx-temp">23,9°</div>
+          <div class="wx-desc">Regen · Laichingen</div>
+        </div>
+      </div>
+      <div class="wx-grid">
+        <span>Feuchte</span><b>70 %</b>
+        <span>Wind</span><b>19,8 km/h</b>
+        <span>Druck</span><b>1012 hPa</b>
+      </div>
+    </div>
+
+    <div class="tile clocktile">
+      <div class="clock"><span id="hhmm">18:42</span><span class="sec" id="ss">07</span></div>
+      <div class="cdate">Dienstag, 18. August 2026</div>
+      <div class="ckw">Kalenderwoche 34</div>
+    </div>
+
+    <div class="tile righttile">
+      <div class="bt">
+        <svg class="bt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 7l10 10M7 17L17 7M12 2v20"/>
+        </svg>
+        <div class="bt-txt">
+          <span class="bt-name">Crusher ANC 2</span>
+          <span class="bt-bar"><i style="width:30%"></i></span>
+        </div>
+        <span class="bt-pct">30 %</span>
+      </div>
+
+      <div class="jobs">
+        <div class="job"><span class="dot"></span>Training-Sync<span class="t">08:00</span></div>
+        <div class="job"><span class="dot"></span>ELO-Sync<span class="t">00:30</span></div>
+        <div class="job"><span class="dot"></span>Erinnerung<span class="t">Mo 17:00</span></div>
+        <div class="job"><span class="dot"></span>Push<span class="t">Mo 19:00</span></div>
+        <div class="job"><span class="dot"></span>HA-Status<span class="t">01:35</span></div>
+        <div class="job"><span class="dot"></span>Beteiligung<span class="t">So 09:00</span></div>
+        <div class="job"><span class="dot"></span>Fahrtgeld<span class="t">01.08.</span></div>
+        <div class="job"><span class="dot warn"></span>Google-Kalender<span class="t">offline</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════ RASTER ══════════ -->
+  <div class="grid">
+
+    <!-- ───── Spalte 1 ───── -->
+    <div class="col">
+
+      <section class="card stretch tr-card">
+        <div class="chead">
+          <span class="ctitle">Nächstes Training</span>
+          <span class="cnote">in 2 Tagen</span>
+        </div>
+        <div class="cbody">
+          <div class="tr-hero">
+            <div class="tr-when">
+              <span class="tr-day">Do 20.08.</span>
+              <span class="tr-time">20:00</span>
+            </div>
+            <div class="tr-meta">
+              <span>Sporthalle Gerhausen</span>
+              <span class="pill warm">erwartet</span>
+            </div>
+          </div>
+          <div class="zus">
+            <div class="zrow"><span class="zlab">Zugesagt</span>
+              <span class="ztrack"><span class="zfill yes" style="width:63%"></span></span>
+              <span class="znum">12</span></div>
+            <div class="zrow"><span class="zlab">Unsicher</span>
+              <span class="ztrack"><span class="zfill maybe" style="width:16%"></span></span>
+              <span class="znum">3</span></div>
+            <div class="zrow"><span class="zlab">Abgesagt</span>
+              <span class="ztrack"><span class="zfill no" style="width:11%"></span></span>
+              <span class="znum">2</span></div>
+            <div class="zrow"><span class="zlab">Offen</span>
+              <span class="ztrack"><span class="zfill open" style="width:10%"></span></span>
+              <span class="znum">2</span></div>
+          </div>
+        </div>
+        <p class="foot">
+          <b>Torhüter 2 · Feld 10.</b> Datum aus dem Muster (Mo + Do, 20:00 Gerhausen) —
+          der Sync legt Trainings erst für heute und morgen an. Zusagen sind Platzhalter,
+          live kommen sie aus <code>/api/trainings</code>.
+        </p>
+      </section>
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Balu's Training</span>
+          <span class="cnote">Server ~/elo</span>
+        </div>
+        <div class="cbody">
+          <div class="balu-head">
+            <span class="ver">v0.44.0</span>
+            <span class="pill">19 Spielerinnen</span>
+            <span class="pill">24 Trainings</span>
+          </div>
+          <div class="balu-task">
+            <b>Als Nächstes:</b> Phase 1 — Offline-Fundament. IndexedDB-Spiegel aufbauen
+            und die eine <code>api()</code>-Funktion durch den Offline-Wrapper ersetzen.
+          </div>
+          <div class="balu-files">
+            <span>static/local-db.js — Stores + Outbox</span>
+            <span>static/sync.js — apiOffline(), flushOutbox()</span>
+          </div>
+          <ol class="phases fill">
+            <li class="ph now">
+              <span class="phnum">1</span>
+              <span class="phtxt"><b>Offline-Fundament</b>IndexedDB-Spiegel, Outbox, api() gekapselt</span>
+            </li>
+            <li class="ph">
+              <span class="phnum">2</span>
+              <span class="phtxt"><b>Server als Wahrheit</b>Konfliktregel, Nutzung am PC</span>
+            </li>
+            <li class="ph">
+              <span class="phnum">3</span>
+              <span class="phtxt"><b>Anytype ablösen</b>App wird alleinige Quelle</span>
+            </li>
+            <li class="ph">
+              <span class="phnum">4</span>
+              <span class="phtxt"><b>Spieler-App</b>Zu-/Absagen — sicherheitskritisch</span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ───── Spalte 2 ───── -->
+    <div class="col">
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Kalender</span>
+          <span class="cnote">13 Tage</span>
+        </div>
+        <div class="cbody flush">
+          <div class="agday today">
+            <span class="agdate"><b>18.</b>Di</span>
+            <span class="agitems"><span class="agempty">Nichts eingetragen</span></span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>19.</b>Mi</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag waste"></span><span class="agt">06:30</span>Restmüll raus stellen</span>
+            </span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>20.</b>Do</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag train"></span><span class="agt">20:00</span>Training Gerhausen</span>
+            </span>
+          </div>
+          <div class="agday leer">
+            <span class="agdate"><b>21.</b>Fr</span>
+            <span class="agitems"><span class="agempty">Nichts eingetragen</span></span>
+          </div>
+          <div class="agday leer">
+            <span class="agdate"><b>22.</b>Sa</span>
+            <span class="agitems"><span class="agempty">Nichts eingetragen</span></span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>23.</b>So</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag job"></span><span class="agt">09:00</span>Trainingsbeteiligung läuft</span>
+            </span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>24.</b>Mo</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag waste"></span><span class="agt">06:30</span>Gelber Sack</span>
+              <span class="agitem"><span class="agtag train"></span><span class="agt">20:00</span>Training Gerhausen</span>
+            </span>
+          </div>
+          <div class="agday leer">
+            <span class="agdate"><b>25.</b>Di</span>
+            <span class="agitems"><span class="agempty">Nichts eingetragen</span></span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>26.</b>Mi</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag waste"></span><span class="agt">06:30</span>Bio</span>
+            </span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>27.</b>Do</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag train"></span><span class="agt">20:00</span>Training Gerhausen</span>
+            </span>
+          </div>
+          <div class="agday leer">
+            <span class="agdate"><b>28.</b>Fr</span>
+            <span class="agitems"><span class="agempty">Nichts eingetragen</span></span>
+          </div>
+          <div class="agday leer">
+            <span class="agdate"><b>29.</b>Sa</span>
+            <span class="agitems"><span class="agempty">Nichts eingetragen</span></span>
+          </div>
+          <div class="agday">
+            <span class="agdate"><b>30.</b>So</span>
+            <span class="agitems">
+              <span class="agitem"><span class="agtag job"></span><span class="agt">09:00</span>Trainingsbeteiligung läuft</span>
+            </span>
+          </div>
+        </div>
+        <p class="foot">
+          Abfuhr live aus <code>calendar.abfallkalender</code>, Trainings ab 25.08.
+          aus dem Muster (Mo + Do, 20:00). <b>Google-Kalender, Geburtstage und
+          Feiertage stehen in HA auf „unavailable"</b> — Integration neu anmelden.
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="chead">
+          <span class="ctitle">Abfuhr</span>
+          <span class="cnote">Alb-Donau-Kreis</span>
+        </div>
+        <div class="cbody flush">
+          <ul class="list eng">
+            <li><span class="agtag waste"></span><span class="lt">Restmüll</span><span class="qty">morgen · 19.08.</span></li>
+            <li><span class="agtag waste"></span><span class="lt">Gelber Sack</span><span class="qty">Mo · 24.08.</span></li>
+            <li><span class="agtag waste"></span><span class="lt">Bio</span><span class="qty">Mi · 26.08.</span></li>
+            <li><span class="agtag waste"></span><span class="lt">Restmüll</span><span class="qty">Mi · 02.09.</span></li>
+          </ul>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ───── Spalte 3 ───── -->
+    <div class="col">
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Einkaufsliste</span>
+          <span class="cnote">11 offen</span>
+        </div>
+        <div class="cbody flush">
+          <ul class="list two">
+            <li><input type="checkbox" class="tick" id="e1"><label class="lt" for="e1">Nektarinen</label></li>
+            <li><input type="checkbox" class="tick" id="e2"><label class="lt" for="e2">Käseaufschnitt</label></li>
+            <li><input type="checkbox" class="tick" id="e3"><label class="lt" for="e3">Salatgurke</label></li>
+            <li><input type="checkbox" class="tick" id="e4"><label class="lt" for="e4">Brombeeren</label></li>
+            <li><input type="checkbox" class="tick" id="e5"><label class="lt" for="e5">Bananen</label></li>
+            <li><input type="checkbox" class="tick" id="e6"><label class="lt" for="e6">Brot</label></li>
+            <li><input type="checkbox" class="tick" id="e7"><label class="lt" for="e7">Gekochte Eier</label></li>
+            <li><input type="checkbox" class="tick" id="e8"><label class="lt" for="e8">Reis</label></li>
+            <li><input type="checkbox" class="tick" id="e9"><label class="lt" for="e9">Erdbeeren</label></li>
+            <li><input type="checkbox" class="tick" id="e10"><label class="lt" for="e10">Salat</label></li>
+            <li><input type="checkbox" class="tick" id="e11"><label class="lt" for="e11">Sahne</label></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="chead">
+          <span class="ctitle">Haushalt fällig</span>
+          <span class="cnote">9 von 10</span>
+        </div>
+        <div class="cbody">
+          <div class="chores">
+            <span class="chore">Staubsaugen</span>
+            <span class="chore">Nass wischen</span>
+            <span class="chore">Bad putzen</span>
+            <span class="chore">Bett beziehen</span>
+            <span class="chore">Fenster putzen</span>
+            <span class="chore">Feuer Mo</span>
+            <span class="chore">Feuer Di</span>
+            <span class="chore">Feuer Do</span>
+            <span class="chore done">Staub wischen</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Wohnung fertig</span>
+          <span class="cnote">10 offen</span>
+        </div>
+        <div class="cbody flush">
+    <ul class="list">
+      <li><input type="checkbox" class="tick" id="w1"><label class="lt" for="w1">Silikonfugen Bad</label></li>
+      <li><input type="checkbox" class="tick" id="w2"><label class="lt" for="w2">Restliche Lampen anbringen</label></li>
+      <li><input type="checkbox" class="tick" id="w3"><label class="lt" for="w3">Badschränkchen fertig machen</label></li>
+      <li><input type="checkbox" class="tick" id="w4"><label class="lt" for="w4">Fenster + Rahmen putzen</label></li>
+      <li><input type="checkbox" class="tick" id="w5"><label class="lt" for="w5">Wandgarderobe fertig machen</label></li>
+      <li><input type="checkbox" class="tick" id="w6"><label class="lt" for="w6">Fliegengittertür anbringen</label></li>
+      <li><input type="checkbox" class="tick" id="w7"><label class="lt" for="w7">Weiße Plastikdinger anbringen</label></li>
+      <li><input type="checkbox" class="tick" id="w8"><label class="lt" for="w8">Regal runtertragen + Büro organisieren</label></li>
+      <li><input type="checkbox" class="tick" id="w9"><label class="lt" for="w9">Restliche Stellen weiß streichen</label></li>
+      <li><input type="checkbox" class="tick" id="w10"><label class="lt" for="w10">Wand-Wäschespinne Bad</label></li>
+    </ul>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ───── Spalte 4 ───── -->
+    <div class="col">
+
+      <section class="card stretch">
+        <div class="chead"><span class="ctitle">Aufgaben</span><span class="cnote">11 offen</span></div>
+        <div class="cbody flush">
+          <h4 class="lgroup">Handball <span class="n">3</span></h4>
+          <ul class="list">
+            <li><input type="checkbox" class="tick" id="h1"><label class="lt" for="h1">Testspiel Engstingen</label></li>
+            <li><input type="checkbox" class="tick" id="h2"><label class="lt" for="h2">Testspiel Wiblingen</label></li>
+            <li><input type="checkbox" class="tick" id="h3"><label class="lt" for="h3">Pubquiz fertig machen</label></li>
+            <li><input type="checkbox" class="tick" id="h4" checked><label class="lt" for="h4">Turnier Engstingen anmelden</label></li>
+          </ul>
+          <h4 class="lgroup">Haushalt <span class="n">8</span></h4>
+          <ul class="list">
+            <li><input type="checkbox" class="tick" id="d1"><label class="lt" for="d1">Saugen</label></li>
+            <li><input type="checkbox" class="tick" id="d2"><label class="lt" for="d2">Nass wischen, insb. Küche und Bad</label></li>
+            <li><input type="checkbox" class="tick" id="d3"><label class="lt" for="d3">Küche putzen</label></li>
+            <li><input type="checkbox" class="tick" id="d4"><label class="lt" for="d4">Bad putzen</label></li>
+            <li><input type="checkbox" class="tick" id="d5"><label class="lt" for="d5">Staub wischen</label></li>
+            <li><input type="checkbox" class="tick" id="d6"><label class="lt" for="d6">Bett neu beziehen</label></li>
+            <li><input type="checkbox" class="tick" id="d7"><label class="lt" for="d7">Büro aufräumen</label></li>
+            <li><input type="checkbox" class="tick" id="d8"><label class="lt" for="d8">Einkaufen</label></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="chead">
+          <span class="ctitle">Posteingang</span>
+          <span class="cnote">Beispielinhalt</span>
+        </div>
+        <div class="cbody flush">
+          <div class="mrow">
+            <span class="mfrom"><span class="mnew"></span>Absender</span><span class="mtime">17:04</span>
+            <span class="msub">Betreffzeile der ungelesenen Nachricht</span>
+          </div>
+          <div class="mrow">
+            <span class="mfrom"><span class="mnew"></span>Absender</span><span class="mtime">14:21</span>
+            <span class="msub">Betreffzeile der ungelesenen Nachricht</span>
+          </div>
+          <div class="mrow">
+            <span class="mfrom">Absender</span><span class="mtime">Mo</span>
+            <span class="msub">Betreffzeile einer gelesenen Nachricht</span>
+          </div>
+        </div>
+        <p class="foot">
+          <b>Noch keine Quelle.</b> HA bringt eine IMAP-Integration mit; mit einem
+          Google-App-Passwort liefert sie Absender, Betreff und die Zahl der Ungelesenen.
+          Erfundene Betreffzeilen stehen hier absichtlich nicht.
+          <b>WhatsApp bleibt offen</b> — keine private API, und die Nachbauten von
+          WhatsApp Web verstoßen gegen die Nutzungsbedingungen.
+        </p>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ══════════ HOMESERVER — immer offen ══════════ -->
+  <section class="card srv">
+    <div class="chead">
+      <span class="ctitle">Homeserver</span>
+      <span class="pill ok">alles läuft</span>
+      <span class="cnote">homeserver · online seit 03.06.2026 · 76 Tage</span>
+    </div>
+
+    <div class="sdetail">
+      <div class="sblock">
+        <h4>Auslastung</h4>
+        <div class="kv"><span class="k">Arbeitsspeicher</span>
+          <span class="mini"><i style="width:32.3%"></i></span><span class="v">32,3 %</span></div>
+        <div class="kv"><span class="k">Massenspeicher</span>
+          <span class="mini"><i style="width:11.9%"></i></span><span class="v">11,9 %</span></div>
+        <div class="kv"><span class="k">Prozessortemp.</span>
+          <span class="mini"><i style="width:30%"></i></span><span class="v">30,0 °C</span></div>
+        <div class="kv"><span class="k">Load</span><span class="v">0,00</span></div>
+      </div>
+      <div class="sblock">
+        <h4>Hardware</h4>
+        <div class="kv"><span class="k">CPU</span><span class="v">Pentium G4400T</span></div>
+        <div class="kv"><span class="k">Kerne / Threads</span><span class="v">2 / 2</span></div>
+        <div class="kv"><span class="k">RAM gesamt</span><span class="v">7,1 GiB</span></div>
+        <div class="kv"><span class="k">Disk gesamt</span><span class="v">232 GB</span></div>
+      </div>
+      <div class="sblock">
+        <h4>Dienste</h4>
+        <div class="kv"><span class="k">Home Assistant</span><span class="v">läuft</span></div>
+        <div class="kv"><span class="k">Portainer</span><span class="v">läuft</span></div>
+        <div class="kv"><span class="k">handballforge-web</span><span class="v">läuft</span></div>
+        <div class="kv"><span class="k">Anytype headless</span><span class="v">läuft</span></div>
+      </div>
+      <div class="sblock">
+        <h4>Cronjobs</h4>
+        <div class="kv"><span class="k">Training-Sync</span><span class="v">heute 08:00</span></div>
+        <div class="kv"><span class="k">ELO-Sync</span><span class="v">heute 00:30</span></div>
+        <div class="kv"><span class="k">Beteiligung</span><span class="v">So 09:00</span></div>
+        <div class="kv"><span class="k">Fahrtgeld</span><span class="v">01.08. 10:00</span></div>
+      </div>
+      <div class="sblock">
+        <h4>Dieser iMac</h4>
+        <div class="kv"><span class="k">System</span><span class="v">Linux Mint 22.3</span></div>
+        <div class="kv"><span class="k">Schirm</span><span class="v">2560 × 1440</span></div>
+        <div class="kv"><span class="k">CPU</span><span class="v">Core i3-550</span></div>
+        <div class="kv"><span class="k">RAM frei</span><span class="v">10 von 11 GiB</span></div>
+      </div>
+    </div>
+  </section>
+
+  <details class="fold">
+    <summary>
+      <span class="arrow" aria-hidden="true"></span>
+      <span class="sname">Wer streamt gerade</span>
+      <span class="pill crit-live">2 live</span>
+      <span class="shint">Twitch · deine Follows</span>
+    </summary>
+
+    <div class="foldbody">
+      <div class="lrow">
+        <span class="av live">A</span>
+        <span class="ltxt"><span class="lname">Streamer A</span>
+          <span class="lgame">Just Chatting · seit 1:20 Std.</span></span>
+        <span class="lview">4,2 k</span>
+      </div>
+      <div class="lrow">
+        <span class="av live">B</span>
+        <span class="ltxt"><span class="lname">Streamer B</span>
+          <span class="lgame">EA Sports FC · seit 3:05 Std.</span></span>
+        <span class="lview">870</span>
+      </div>
+      <div class="lrow">
+        <span class="av off">C</span>
+        <span class="ltxt"><span class="lname">Streamer C</span>
+          <span class="lgame">offline · zuletzt gestern</span></span>
+      </div>
+      <p class="foot">
+        Zeigt später wirklich <b>deine</b> Follows über
+        <code>/helix/streams/followed</code>. Dafür braucht es einmalig einen
+        Twitch-Login mit der Berechtigung <code>user:read:follows</code> — eine
+        App-ID allein genügt nicht.
+      </p>
+    </div>
+  </details>
+
+  <div class="legend">
+    <span class="pill warm">Prototyp</span>
+    <span>Datenstand 18.08.2026 — die Uhr läuft live, alles andere ist eine eingefrorene
+      Momentaufnahme aus Home Assistant, <code>elo.db</code>, Homeserver und iMac.</span>
+  </div>
+
+</div>
+
+<script>
+/* Uhr */
+(function () {
+  var hhmm = document.getElementById("hhmm");
+  var ss = document.getElementById("ss");
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function tick() {
+    var d = new Date();
+    hhmm.textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    ss.textContent = pad(d.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>

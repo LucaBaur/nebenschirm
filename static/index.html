@@ -1,0 +1,867 @@
+<title>Nebenschirm</title>
+
+<style>
+/* ============================================================
+   Nebenschirm — die Tafel am iMac (Linux Mint, 2560 x 1440).
+   Ein Blick aus zwei Metern, kein Scrollen, und seit August
+   bedienbar: Haken setzen, Posten anlegen, Routinen quittieren.
+
+   Anmutung: Anzeigetafel. Bernstein auf Anthrazit, Zahlen gross
+   und tabellarisch, Beschriftungen schmal und gesperrt. Am
+   Zielrechner sind Ubuntu, Ubuntu Sans und Nimbus Sans Narrow
+   nativ da — nichts wird nachgeladen, die Tafel muss auch ohne
+   Internet stehen.
+   ============================================================ */
+
+:root {
+  --ground:    #0E1214;
+  --card:      #171D20;
+  --card-2:    #1F2629;
+  --rule:      #293236;
+  --kante:     rgba(255,255,255,.055);
+
+  --ink:       #EDF2F0;
+  --ink-2:     #B7C4C4;
+  --muted:     #85969A;
+  --faint:     #5E7075;
+
+  /* Bernstein heisst "offen, jetzt, sieh her". Salbei heisst
+     "erledigt, laeuft". Ziegel heisst "kaputt". Mehr Farben
+     braucht diese Tafel nicht. */
+  --signal:    #F5B23D;
+  --signal-w:  #3A2A11;
+  --gruen:     #5FBF8F;
+  --gruen-w:   #15301F;
+  --rot:       #E5604A;
+  --rot-w:     #3A1A15;
+
+  --sh-1: 0 1px 2px rgba(0,0,0,.45);
+  --sh-2: 0 2px 5px rgba(0,0,0,.4), 0 14px 34px rgba(0,0,0,.35);
+  --sh-in: inset 0 1px 0 rgba(255,255,255,.045);
+
+  --r-lg: 14px;
+  --r-md: 9px;
+  --r-sm: 5px;
+
+  /* Ubuntu fuer Zahlen und Namen, Nimbus Sans Narrow fuer
+     Beschriftungen — schmal und gesperrt wie an einer Hallenwand. */
+  --f-disp: Ubuntu, "Ubuntu Sans", "Segoe UI Variable Display", system-ui, sans-serif;
+  --f-body: "Ubuntu Sans", Ubuntu, system-ui, "Segoe UI", "DejaVu Sans", sans-serif;
+  --f-schmal: "Nimbus Sans Narrow", "Liberation Sans Narrow", "Arial Narrow",
+              "Ubuntu Condensed", var(--f-body);
+  --f-mono: "Ubuntu Sans Mono", "Ubuntu Mono", ui-monospace, "DejaVu Sans Mono",
+            Consolas, monospace;
+
+  --lucke: 11px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--ground);
+  font-family: var(--f-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Zwei schwache Lichter auf dem Grund — statisch. Sie wandern zu
+   lassen sah gut aus und kostete am iMac 70 bis 86 Prozent CPU,
+   dauerhaft: der Rechner hat keine brauchbare GPU und rastert die
+   2560 x 1440 bei jedem Bild neu. Die Bewegung sitzt jetzt in der
+   Uhrkachel, siehe dort. */
+.licht {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(680px 460px at 22% 28%, rgba(245,178,61,.11), transparent 70%),
+    radial-gradient(760px 520px at 78% 74%, rgba(95,191,143,.075), transparent 70%);
+}
+
+/* One-Pager: auf dem Zielschirm nie scrollen. Bei kleinen Fenstern
+   (Vorschau am Laptop) darf die Seite lieber rollen als abschneiden. */
+.board {
+  position: relative; z-index: 1;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lucke);
+  padding: 12px 15px 11px;
+}
+@media (max-height: 940px) {
+  body { overflow: auto; }
+  .board { height: auto; min-height: 100vh; overflow: visible; }
+}
+
+/* ─────────── Karte ─────────── */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--kante);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2), var(--sh-in);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chead {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 16px 7px; flex: none;
+}
+.ctitle {
+  font-family: var(--f-schmal);
+  font-size: 15px; font-weight: 700;
+  letter-spacing: .13em; text-transform: uppercase;
+  color: var(--ink-2);
+}
+.cnote {
+  font-family: var(--f-schmal);
+  font-size: 12.5px; letter-spacing: .06em;
+  color: var(--faint); margin-left: auto; flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.cbody { padding: 0 16px 12px; overflow-y: auto; min-height: 0; flex: 1; }
+.cbody.flush { padding: 0 0 7px; }
+.cbody { scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+.cbody::-webkit-scrollbar { width: 6px; }
+.cbody::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 999px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--f-schmal);
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: 2.5px 9px; border-radius: 999px;
+  background: var(--card-2); color: var(--muted); white-space: nowrap;
+}
+.pill.signal { background: var(--signal-w); color: var(--signal); }
+.pill.ok     { background: var(--gruen-w);  color: var(--gruen); }
+.pill.warn   { background: var(--rot-w);    color: var(--rot); }
+
+.hinweis { margin: 0; padding: 14px 2px; font-size: 13px; color: var(--muted); }
+
+/* Sagt an, wie viele Zeilen die Karte nicht mehr fassen konnte. */
+.mehr {
+  position: sticky; bottom: 0; margin-top: 2px;
+  padding: 4px 16px 6px;
+  font-family: var(--f-schmal); font-size: 12px; letter-spacing: .06em;
+  color: var(--faint); background: linear-gradient(transparent, var(--card) 45%);
+  text-align: right;
+}
+
+/* ─────────── Kopfband ─────────── */
+
+.top { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--lucke); flex: none; }
+
+.tile {
+  background: var(--card);
+  border: 1px solid var(--kante);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2), var(--sh-in);
+  padding: 11px 18px;
+  display: flex; align-items: center;
+}
+
+/* Uhr — das groesste Element der Tafel, wie die Spielzeit an der
+   Hallenwand. Der Sekundenbalken darunter laeuft im vorhandenen
+   Sekundentakt mit: eine `scaleX`-Zuweisung pro Sekunde, mehr nicht. */
+.clocktile {
+  flex-direction: column; justify-content: center; padding: 10px 44px 12px;
+  text-align: center; position: relative; overflow: hidden;
+}
+/* Einmal je Minute zieht ein Lichtstrich durch die Uhrkachel, dann steht er
+   still. Dauerhaft laufen kann diese Bewegung nicht: ganzflaechig kostete sie
+   den iMac rund 70 Prozent CPU, auf die Kachel begrenzt immer noch 40. Als
+   Strich pro Minute sind es ein paar Prozent — und die Tafel hat trotzdem
+   einen Puls, der zum Sekundenbalken darunter passt. */
+.clocktile::before {
+  content: ""; position: absolute; top: -40%; left: -35%;
+  width: 45%; height: 180%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(245,178,61,.2), transparent);
+  animation: schimmer 60s linear infinite;
+}
+.clocktile > * { position: relative; }
+@keyframes schimmer {
+  0%   { transform: translateX(0) }
+  4%   { transform: translateX(230%) }
+  100% { transform: translateX(230%) }
+}
+
+.clock {
+  font-family: var(--f-disp);
+  font-size: 74px; font-weight: 700; line-height: .9; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: baseline; justify-content: center; gap: 9px;
+}
+.clock .sec {
+  font-family: var(--f-schmal);
+  font-size: 23px; font-weight: 700; color: var(--signal);
+  letter-spacing: .02em; align-self: flex-end; padding-bottom: 11px;
+}
+/* Der Sekundenbalken ist eine einzige scaleX-Zuweisung pro Sekunde — echte
+   Dauerbewegung, die nebenbei etwas anzeigt, statt nur zu schmuecken. */
+.secbar {
+  width: 100%; height: 3px; border-radius: 999px; margin-top: 10px;
+  background: var(--card-2); overflow: hidden;
+}
+.secbar i {
+  display: block; height: 100%; background: var(--signal);
+  transform-origin: left center; transform: scaleX(0);
+  transition: transform .28s linear;
+}
+
+.cdate {
+  font-family: var(--f-schmal); font-size: 16px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-2); margin-top: 9px;
+}
+.ckw {
+  font-family: var(--f-schmal); font-size: 12.5px; letter-spacing: .07em;
+  color: var(--faint); margin-top: 2px;
+}
+
+/* Wetter links: jetzt gross, die naechsten Stunden als Linie. */
+.wxtile { gap: 20px; }
+.wx { display: flex; align-items: center; gap: 14px; flex: none; }
+.wx-icon { width: 42px; height: 42px; flex: none; color: var(--signal); }
+.wx-temp {
+  font-family: var(--f-disp); font-size: 42px; font-weight: 700;
+  line-height: 1; letter-spacing: -.025em; font-variant-numeric: tabular-nums;
+}
+.wx-desc {
+  font-family: var(--f-schmal); font-size: 12.5px; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted); margin-top: 3px;
+}
+.wx-kurve { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wx-kurve svg { width: 100%; height: 46px; display: block; }
+.wx-stunden {
+  display: flex; justify-content: space-between;
+  font-family: var(--f-mono); font-size: 10px; color: var(--faint);
+}
+.wx-grid {
+  display: grid; grid-template-columns: auto auto; gap: 1px 12px;
+  font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; flex: none;
+}
+.wx-grid b { color: var(--ink-2); font-weight: 600; }
+
+/* Rechts: Stand, Cronjobs, Dienste */
+.righttile { gap: 22px; justify-content: flex-end; flex-wrap: wrap; }
+.sync { display: flex; align-items: center; gap: 10px; }
+.sync-txt { display: flex; flex-direction: column; gap: 1px; }
+.sync-lab {
+  font-family: var(--f-schmal); font-size: 11.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--faint);
+}
+.sync-t {
+  font-family: var(--f-disp); font-size: 20px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--ink-2); line-height: 1.1;
+}
+
+.jobs { display: grid; grid-template-columns: repeat(2, auto); gap: 3px 18px; }
+/* Die Dienste stehen als zweite Punktespalte neben den Cronjobs — durch eine
+   duenne Linie getrennt, damit man beide Gruppen auseinanderhaelt. */
+#dienste { border-left: 1px solid var(--rule); padding-left: 20px; }
+.job {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--f-schmal); font-size: 12.5px; letter-spacing: .04em;
+  color: var(--muted); white-space: nowrap;
+}
+.job .t { color: var(--faint); font-variant-numeric: tabular-nums; }
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none; position: relative;
+  background: var(--gruen);
+}
+.dot::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  background: currentColor; opacity: 0;
+}
+/* Nur was klemmt, blinkt. Ein Feld aus dauerhaft pulsierenden gruenen
+   Punkten waere Laerm — und auf dieser Hardware auch noch teurer. */
+.dot.warn, .dot.crit { color: var(--rot); background: var(--rot); }
+.dot.warn::after, .dot.crit::after { animation: puls 2.4s ease-out infinite; }
+@keyframes puls {
+  0%   { opacity: .55; transform: scale(.6) }
+  70%  { opacity: 0;   transform: scale(1.5) }
+  100% { opacity: 0;   transform: scale(1.5) }
+}
+.sync .dot { width: 9px; height: 9px; }
+
+/* ─────────── Raster: 4 Spalten auf 2560 px ─────────── */
+
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--lucke);
+  min-height: 0;
+}
+.col { display: flex; flex-direction: column; gap: var(--lucke); min-height: 0; }
+
+/* Der Kalender braucht die Breite von zwei Spalten. Ein Element kann sich
+   aber nicht ueber zwei `.col`-Container legen — deshalb fasst `.mitte` die
+   beiden Spalten zusammen: Kalender oben ueber die volle Breite, darunter
+   wieder zwei gewoehnliche Spalten. */
+.mitte { grid-column: span 2; display: flex; flex-direction: column; gap: var(--lucke); min-height: 0; }
+.mitte-unten {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--lucke); min-height: 0; flex: 1 1 auto;
+}
+
+/* Karten teilen sich die Spaltenhoehe nach ihrer Inhaltshoehe: freier Platz
+   wird verteilt, Platzmangel anteilig abgezogen. Wichtig bei Live-Daten —
+   die Listen sind mal laenger, mal kuerzer. */
+.col > .card, .mitte > .card { flex: 0 1 auto; min-height: 92px; }
+.col > .card.stretch, .mitte > .card.stretch { flex-grow: 1; }
+
+@media (max-width: 1700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px)  {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .mitte { grid-column: span 1; }
+  .mitte-unten { grid-template-columns: minmax(0, 1fr); }
+  .top { grid-template-columns: 1fr; }
+  .righttile { justify-content: flex-start; }
+  #dienste { border-left: 0; padding-left: 0; }
+}
+
+/* ─────────── Nächster Termin ─────────── */
+
+.tr-card .cbody { display: flex; flex-direction: column; gap: 13px; }
+
+.tr-hero {
+  border-radius: var(--r-md);
+  background: linear-gradient(152deg, var(--signal-w), var(--card-2) 78%);
+  border: 1px solid var(--kante);
+  padding: 12px 15px 13px;
+}
+.tr-gross {
+  font-family: var(--f-disp); font-size: 36px; font-weight: 700;
+  line-height: 1; letter-spacing: -.025em; color: var(--signal);
+}
+.tr-wann {
+  font-family: var(--f-schmal); font-size: 14px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-2); margin-top: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.tr-titel {
+  font-family: var(--f-disp); font-size: 17px; font-weight: 500;
+  color: var(--ink); margin-top: 9px; line-height: 1.3;
+}
+.tr-meta {
+  display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin-top: 7px;
+  font-family: var(--f-schmal); font-size: 12.5px; letter-spacing: .05em;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.tr-meta .rechts { margin-left: auto; color: var(--faint); }
+
+/* Zusagen als Ring: eine Zahl gross in der Mitte, die Anteile aussen. */
+.zus { display: flex; align-items: center; gap: 18px; flex: none; }
+.ring { width: 96px; height: 96px; flex: none; }
+.ring circle { fill: none; stroke-width: 11; }
+.ring .bahn { stroke: var(--card-2); }
+.ring .stueck { transition: stroke-dasharray .7s cubic-bezier(.2,.7,.3,1); }
+.ring-mitte {
+  font-family: var(--f-disp); font-size: 28px; font-weight: 700;
+  fill: var(--ink); text-anchor: middle; font-variant-numeric: tabular-nums;
+}
+.ring-lab {
+  font-family: var(--f-schmal); font-size: 10px; letter-spacing: .12em;
+  fill: var(--faint); text-anchor: middle;
+}
+.zleg { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+.zrow { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+.zpunkt { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.zpunkt.yes { background: var(--gruen); }
+.zpunkt.maybe { background: var(--signal); }
+.zpunkt.no { background: var(--rot); }
+.zpunkt.open { background: var(--faint); }
+.zlab {
+  font-family: var(--f-schmal); letter-spacing: .06em; color: var(--muted);
+  text-transform: uppercase; font-size: 12.5px;
+}
+.znum {
+  font-family: var(--f-disp); font-size: 16px; font-weight: 700;
+  margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+
+/* ─────────── Balu ─────────── */
+
+.balu-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ver {
+  font-family: var(--f-disp); font-size: 21px; font-weight: 700;
+  color: var(--signal); font-variant-numeric: tabular-nums;
+}
+.balu-task { font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.balu-task b { color: var(--ink); font-weight: 600; }
+.balu-task code {
+  font-family: var(--f-mono); font-size: 11.5px;
+  background: var(--card-2); padding: 1px 5px; border-radius: var(--r-sm);
+}
+
+/* Die vier Ausbaustufen der App. Nur die laufende traegt ihre Erlaeuterung —
+   die uebrigen stehen einzeilig, damit darunter noch die Beteiligung passt. */
+.phases { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ph { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border-radius: var(--r-md); }
+.ph.now { background: var(--signal-w); }
+.phnum {
+  width: 20px; height: 20px; flex: none; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--f-disp); font-size: 11px; font-weight: 700;
+  background: var(--card-2); color: var(--faint);
+}
+.ph.now .phnum { background: var(--signal); color: #14100A; }
+.phtxt { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.phtxt b { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.ph.now .phtxt b { color: var(--signal); }
+.phsub { font-style: normal; }
+
+/* Anwesende je Training, aelteste links. Balkenreihe statt Kurve: es sind
+   einzelne Termine, keine fortlaufende Messung — eine Linie wuerde eine
+   Entwicklung zwischen zwei Trainings behaupten, die es nicht gibt. */
+.bet { margin-top: 11px; }
+.bet-kopf {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px;
+  font-family: var(--f-schmal); font-size: 11.5px; letter-spacing: .11em;
+  text-transform: uppercase; color: var(--faint);
+}
+.bet-kopf .schnitt { margin-left: auto; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bet-reihe { display: flex; align-items: flex-end; gap: 4px; height: 36px; }
+.bet-saeule {
+  flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+  height: 100%; gap: 3px; min-width: 0;
+}
+.bet-saeule i {
+  display: block; width: 100%; border-radius: 2px 2px 0 0;
+  background: var(--gruen); opacity: .85;
+  transform-origin: bottom; animation: wachsen .5s cubic-bezier(.2,.7,.3,1) both;
+}
+.bet-saeule.spiel i { background: var(--signal); }
+.bet-saeule b {
+  font-family: var(--f-mono); font-size: 9.5px; color: var(--faint);
+  text-align: center; font-weight: 400;
+}
+@keyframes wachsen { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+
+/* ─────────── Kalender: Woche in Spalten ─────────── */
+
+.kalwoche { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); height: 100%; }
+.kaltag { padding: 5px 9px 8px; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.kaltag + .kaltag { border-left: 1px solid var(--rule); }
+.kaltag.heute { background: linear-gradient(180deg, var(--signal-w), transparent 70%); }
+.kalkopf {
+  display: flex; align-items: baseline; gap: 6px;
+  font-family: var(--f-schmal); font-size: 12px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.kalkopf b { font-family: var(--f-disp); font-size: 19px; font-weight: 700; letter-spacing: -.02em; color: var(--ink-2); }
+.kaltag.heute .kalkopf { color: var(--signal); }
+.kaltag.heute .kalkopf b { color: var(--signal); }
+.kalitems { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.agitem {
+  display: flex; align-items: flex-start; gap: 7px;
+  font-size: 12.5px; line-height: 1.32; flex-wrap: wrap; color: var(--ink-2);
+}
+.agtag { width: 7px; height: 7px; border-radius: 2px; flex: none; margin-top: 4px; }
+.agtag.train { background: var(--signal); }
+.agtag.waste { background: var(--gruen); }
+.agtag.job   { background: var(--faint); }
+.agt { font-family: var(--f-mono); font-size: 11px; color: var(--muted); flex: none; }
+.agempty { font-size: 13px; color: #3E4C50; }
+.kal-fehlt { padding: 7px 16px 2px; font-size: 12.5px; color: var(--rot); }
+
+/* ─────────── Listen ─────────── */
+
+.lgroup {
+  margin: 0; padding: 9px 16px 4px;
+  font-family: var(--f-schmal); font-size: 11.5px; font-weight: 700;
+  color: var(--faint); letter-spacing: .13em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.lgroup .n {
+  font-family: var(--f-disp); font-size: 11px; font-weight: 700; letter-spacing: 0;
+  color: var(--signal); background: var(--signal-w);
+  padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.cbody > .lgroup:first-child { padding-top: 3px; }
+
+ul.list { list-style: none; margin: 0; padding: 0; }
+/* Kurze Eintraege stehen zweispaltig — spart Hoehe, ohne enger zu wirken. */
+ul.list.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4px; }
+ul.list.two li:nth-child(2n) { border-left: 1px solid var(--rule); }
+ul.list li {
+  display: flex; align-items: center; gap: 11px;
+  padding: 5px 16px; min-height: 32px; font-size: 13.5px;
+  transition: background .12s;
+}
+ul.list li:hover { background: var(--card-2); }
+/* Beim Anlegen und Abhaken bewegt sich die Zeile selbst — sonst waere nicht
+   zu sehen, dass der Klick angekommen ist. */
+li.neu { animation: reinschieben .32s cubic-bezier(.2,.7,.3,1) both; }
+li.weg  { animation: rausblenden .3s ease-in both; }
+@keyframes reinschieben {
+  from { opacity: 0; transform: translateY(-7px) }
+  to   { opacity: 1; transform: none }
+}
+@keyframes rausblenden {
+  to { opacity: 0; transform: translateX(14px) }
+}
+
+.tick {
+  appearance: none; -webkit-appearance: none; margin: 0; flex: none; cursor: pointer;
+  width: 19px; height: 19px; border-radius: 50%;
+  border: 1.6px solid var(--faint); background: transparent; position: relative;
+  transition: border-color .15s, background .15s;
+}
+.tick:hover { border-color: var(--gruen); }
+.tick:checked { border-color: var(--gruen); background: var(--gruen); }
+.tick:checked::after {
+  content: ""; position: absolute; inset: 4px 4px 5px 4px;
+  border-left: 2px solid var(--card); border-bottom: 2px solid var(--card);
+  transform: rotate(-45deg);
+}
+.tick:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.tick:checked + .lt { color: var(--faint); text-decoration: line-through; }
+.lt { transition: color .13s; cursor: pointer; flex: 1; min-width: 0; }
+.qty {
+  margin-left: auto; flex: none; font-family: var(--f-mono);
+  font-size: 11.5px; color: var(--faint);
+}
+
+/* Posten anlegen: der Knopf sitzt im Kartenkopf, das Feld erscheint unten
+   in der Liste. Enter legt an, Esc bricht ab. */
+.plus {
+  appearance: none; border: 1px solid var(--rule); background: transparent;
+  color: var(--muted); cursor: pointer; flex: none;
+  width: 24px; height: 24px; border-radius: 50%;
+  font-size: 17px; line-height: 1; display: grid; place-items: center;
+  transition: color .15s, border-color .15s, transform .15s;
+}
+.chead .plus { margin-left: 9px; }
+.lgroup .plus { margin-left: auto; width: 21px; height: 21px; font-size: 15px; }
+.plus:hover { color: var(--signal); border-color: var(--signal); transform: rotate(90deg); }
+.plus:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.eingabe { display: flex; align-items: center; gap: 11px; padding: 5px 16px 9px; }
+.eingabe input {
+  flex: 1; min-width: 0; font: inherit; font-size: 13.5px; color: var(--ink);
+  background: var(--card-2); border: 1px solid var(--signal);
+  border-radius: var(--r-md); padding: 7px 11px; outline: none;
+}
+.eingabe input::placeholder { color: var(--faint); }
+
+/* ─────────── Haushalt: die Überzugs-Leiste ─────────── */
+
+/* Die Karte, die diese Tafel ausmacht. Jede Routine zeigt, wie weit sie
+   ueber ihr Intervall hinaus ist — "seit 11 Tagen" sagt mehr als "faellig",
+   und der Balken macht auf einen Blick klar, was am laengsten liegt.
+   Ein Klick quittiert, der zweite bestaetigt: ein Streifschuss mit der Maus
+   soll keine Routine zuruecksetzen. */
+.chores { display: flex; flex-direction: column; gap: 3px; }
+.due {
+  appearance: none; background: transparent; border: 0; cursor: pointer;
+  width: 100%; text-align: left; color: inherit; font: inherit;
+  display: grid; grid-template-columns: 122px 1fr 54px;
+  align-items: center; gap: 12px;
+  padding: 7px 9px; border-radius: var(--r-md); min-height: 34px;
+  transition: background .13s;
+}
+.due:hover { background: var(--card-2); }
+.due:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+.due-name {
+  font-family: var(--f-schmal); font-size: 13.5px; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.due-track { height: 8px; border-radius: 999px; background: var(--card-2); overflow: hidden; }
+.due-track i {
+  display: block; height: 100%; border-radius: 999px; background: var(--gruen);
+  transform-origin: left; transform: scaleX(0);
+  transition: transform .6s cubic-bezier(.2,.7,.3,1);
+}
+.due.faellig .due-name { color: var(--ink); }
+.due.faellig .due-track i { background: var(--signal); }
+.due.lange .due-track i { background: var(--rot); }
+.due-tage {
+  font-family: var(--f-disp); font-size: 14.5px; font-weight: 700;
+  text-align: right; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.due.faellig .due-tage { color: var(--signal); }
+.due.lange .due-tage { color: var(--rot); }
+/* Waehrend der Rueckfrage bekommt der Text die ganze Zeile: in der schmalen
+   Namensspalte war er abgeschnitten, und eine halbe Frage ist keine. */
+.due.fragt { background: var(--signal-w); grid-template-columns: 1fr; }
+.due.fragt .due-track, .due.fragt .due-tage { display: none; }
+.due.fragt .due-name { color: var(--signal); }
+.due.fertig { animation: quittiert .6s ease-out both; }
+@keyframes quittiert {
+  0%   { background: var(--gruen-w) }
+  100% { background: transparent }
+}
+
+/* ─────────── Homeserver ─────────── */
+
+.card.srv { flex: none; }
+.sdetail { padding: 3px 16px 14px; }
+#srv-last {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 270px)) repeat(2, minmax(0, 170px));
+  gap: 4px 34px; justify-content: start; align-items: center;
+}
+@media (max-width: 1700px) { #srv-last { grid-template-columns: repeat(2, minmax(0, 270px)); } }
+
+/* Ring plus Kurve: der Ring sagt "wie voll gerade", die Kurve daneben
+   "und wie war es die letzten 24 Stunden". Einzeln waere beides die
+   halbe Wahrheit. */
+.mess { display: flex; align-items: center; gap: 12px; }
+.mess-ring { width: 54px; height: 54px; flex: none; }
+.mess-ring circle { fill: none; stroke-width: 6; }
+.mess-ring .bahn { stroke: var(--card-2); }
+.mess-ring .wert {
+  stroke: var(--gruen); stroke-linecap: round;
+  transition: stroke-dasharray .7s cubic-bezier(.2,.7,.3,1);
+}
+.mess-ring .wert.warn { stroke: var(--signal); }
+.mess-ring .wert.crit { stroke: var(--rot); }
+.mess-ring text {
+  font-family: var(--f-disp); font-size: 15px; font-weight: 700;
+  fill: var(--ink-2); text-anchor: middle; font-variant-numeric: tabular-nums;
+}
+.mess-txt { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.mess-lab {
+  font-family: var(--f-schmal); font-size: 11.5px; letter-spacing: .11em;
+  text-transform: uppercase; color: var(--faint);
+}
+.spark { width: 100%; height: 24px; display: block; }
+.spark polyline { fill: none; stroke: var(--gruen); stroke-width: 1.6; stroke-linejoin: round; }
+.spark polygon { fill: var(--gruen); opacity: .13; }
+.spark.signal polyline { stroke: var(--signal); }
+.spark.signal polygon { fill: var(--signal); }
+
+.kv { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.kv .k {
+  font-family: var(--f-schmal); font-size: 11.5px; letter-spacing: .11em;
+  text-transform: uppercase; color: var(--faint);
+}
+.kv .v { font-family: var(--f-disp); font-size: 19px; font-weight: 700; color: var(--ink-2); }
+.kv .v small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.kv .v.warn { color: var(--signal); }
+
+/* ─────────── Fußzeile ─────────── */
+
+.legend {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  font-size: 12px; color: var(--muted); padding: 0 5px; flex: none;
+}
+.legend code {
+  font-family: var(--f-mono); font-size: 11px;
+  background: var(--card); padding: 1px 5px; border-radius: var(--r-sm);
+}
+
+/* Klemmt der Schreibweg, sagt die Tafel das dort, wo man hinsieht. */
+.klemmt {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  z-index: 5; background: var(--rot-w); color: var(--rot);
+  border: 1px solid var(--rot); border-radius: 999px;
+  padding: 9px 20px; font-size: 13.5px; font-weight: 600;
+  box-shadow: var(--sh-2); animation: reinschieben .25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::after { transition: none !important; animation: none !important; }
+  .secbar i, .due-track i, .bet-saeule i { transform: none; }
+}
+</style>
+
+<div class="licht" aria-hidden="true"></div>
+
+<div class="board">
+
+  <!-- ══════════ KOPFBAND ══════════ -->
+  <header class="top">
+
+    <div class="tile wxtile">
+      <div class="wx">
+        <svg class="wx-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <path d="M9 17.5a4.5 4.5 0 0 1 .6-8.96A6.5 6.5 0 0 1 22 9.7a4.4 4.4 0 0 1 .4 8.8z"/>
+          <path d="M11 21.5l-1.3 4M16 21.5l-1.3 4M21 21.5l-1.3 4"/>
+        </svg>
+        <div>
+          <div class="wx-temp" id="wx-temp">—</div>
+          <div class="wx-desc" id="wx-desc">Laichingen</div>
+        </div>
+      </div>
+      <div class="wx-kurve">
+        <svg id="wx-kurve" viewBox="0 0 240 46" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="wx-stunden" id="wx-stunden"></div>
+      </div>
+      <div class="wx-grid">
+        <span>Feuchte</span><b id="wx-hum">—</b>
+        <span>Wind</span><b id="wx-wind">—</b>
+        <span>Druck</span><b id="wx-press">—</b>
+      </div>
+    </div>
+
+    <div class="tile clocktile">
+      <div class="clock"><span id="hhmm">—:—</span><span class="sec" id="ss">—</span></div>
+      <div class="secbar"><i id="secbar"></i></div>
+      <div class="cdate" id="cdate">—</div>
+      <div class="ckw"><span id="ckw">—</span> · <span id="stand">lädt …</span></div>
+    </div>
+
+    <div class="tile righttile">
+      <div class="sync">
+        <span class="dot" id="sync-dot"></span>
+        <div class="sync-txt">
+          <span class="sync-lab">Aktualisiert</span>
+          <span class="sync-t" id="sync-t">—</span>
+        </div>
+      </div>
+      <div class="jobs" id="jobs"></div>
+      <div class="jobs" id="dienste"></div>
+    </div>
+  </header>
+
+  <!-- ══════════ RASTER ══════════ -->
+  <div class="grid">
+
+    <!-- ───── Spalte 1 ───── -->
+    <div class="col">
+
+      <section class="card stretch tr-card">
+        <div class="chead">
+          <span class="ctitle">Nächster Termin</span>
+          <span class="cnote" id="tr-note">—</span>
+        </div>
+        <div class="cbody" id="tr-body"></div>
+      </section>
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Balu's Training</span>
+          <span class="cnote">Server ~/elo</span>
+        </div>
+        <div class="cbody">
+          <div class="balu-head">
+            <span class="ver" id="balu-ver">—</span>
+            <span class="pill" id="balu-sp">—</span>
+            <span class="pill" id="balu-tr">—</span>
+          </div>
+          <ol class="phases">
+            <li class="ph now">
+              <span class="phnum">1</span>
+              <span class="phtxt"><b>Offline-Fundament</b><i class="phsub">IndexedDB-Spiegel, Outbox, api() gekapselt</i></span>
+            </li>
+            <li class="ph"><span class="phnum">2</span><span class="phtxt"><b>Server als Wahrheit</b></span></li>
+            <li class="ph"><span class="phnum">3</span><span class="phtxt"><b>Anytype ablösen</b></span></li>
+            <li class="ph"><span class="phnum">4</span><span class="phtxt"><b>Spieler-App</b></span></li>
+          </ol>
+          <div class="bet">
+            <div class="bet-kopf">
+              <span>Anwesend je Training</span>
+              <span class="schnitt" id="bet-schnitt">—</span>
+            </div>
+            <div class="bet-reihe" id="bet-reihe"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ───── Spalte 2 + 3: Kalender breit, darunter zwei Spalten ───── -->
+    <div class="mitte">
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Kalender</span>
+          <span class="cnote" id="kal-note">—</span>
+        </div>
+        <div class="cbody flush" id="kal-body"></div>
+      </section>
+
+      <div class="mitte-unten">
+
+        <div class="col">
+          <section class="card">
+            <div class="chead">
+              <span class="ctitle">Abfuhr</span>
+              <span class="cnote">Alb-Donau-Kreis</span>
+            </div>
+            <div class="cbody flush"><ul class="list" id="abfuhr"></ul></div>
+          </section>
+
+          <section class="card stretch">
+            <div class="chead">
+              <span class="ctitle">Einkaufsliste</span>
+              <span class="cnote" id="ek-note">—</span>
+              <button class="plus" type="button" data-liste="todo.einkaufsliste"
+                      data-ziel="einkauf" title="Posten anlegen"
+                      aria-label="Posten anlegen">+</button>
+            </div>
+            <div class="cbody flush"><ul class="list two" id="einkauf"></ul></div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="card stretch">
+            <div class="chead">
+              <span class="ctitle">Haushalt</span>
+              <span class="cnote" id="hh-note">—</span>
+            </div>
+            <div class="cbody"><div class="chores" id="haushalt"></div></div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ───── Spalte 4 ───── -->
+    <div class="col">
+
+      <section class="card stretch">
+        <div class="chead">
+          <span class="ctitle">Aufgaben</span>
+          <span class="cnote" id="auf-note">—</span>
+        </div>
+        <div class="cbody flush" id="aufgaben"></div>
+      </section>
+
+      <section class="card">
+        <div class="chead">
+          <span class="ctitle">Posteingang</span>
+          <span class="cnote">keine Quelle</span>
+        </div>
+        <div class="cbody">
+          <p class="hinweis">Braucht die IMAP-Integration in Home Assistant und ein
+            Google-App-Passwort. Erfundene Betreffzeilen wären schlechter als nichts.</p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ══════════ HOMESERVER ══════════ -->
+  <section class="card srv">
+    <div class="chead">
+      <span class="ctitle">Homeserver</span>
+      <span class="pill ok" id="srv-pill">—</span>
+      <span class="cnote" id="srv-note">homeserver</span>
+    </div>
+    <div class="sdetail">
+      <div id="srv-last"></div>
+    </div>
+  </section>
+
+  <div class="legend">
+    <span class="pill" id="quelle-pill">live</span>
+    <span>Home Assistant, <code>elo.db</code> und Homeserver — alle 5 Minuten neu.
+      Haken, neue Posten und quittierte Routinen gehen sofort zurück nach Home Assistant.</span>
+  </div>
+
+</div>
+
+<script src="board.js"></script>
