@@ -22,7 +22,7 @@ Rechner nebenher normal benutzt wird.
 
 ## Screenshots
 
-<!-- docs/screenshot-*.png — Tafel im Vollbild, mit Demo-Werten -->
+Aufgenommen mit erfundenen Demo-Werten.
 
 ![Die Tafel](docs/screenshot-tafel.png)
 
